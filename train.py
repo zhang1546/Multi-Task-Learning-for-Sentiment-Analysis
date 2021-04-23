@@ -33,7 +33,6 @@ class Train(object):
 
             print("epoch: {} loss: {}\n train_acc: {}\n test_acc:{}".format(epoch, loss, self.train_acc, self.test_acc))
 
-
     def train_epoch(self, model, discriminator, train_loader):
         pred, true, losses = {"target": [], "task": []}, {"target": [], "task": []}, \
                            {"target": [], "task": [], "dis_loss": [], "dis_loss0": [], "total": []}
@@ -43,13 +42,13 @@ class Train(object):
 
             outputs = model({"x": x, "task_id": task_id[0], "seq_len": seq_len})
             target_loss = F.cross_entropy(outputs[0], targets[0]) * self.args.target_weight
-            if not outputs[1]==None:  # 判断是否为N
+            if not outputs[1]==None:
                 task_loss = F.cross_entropy(outputs[1], targets[1]) * self.args.task_weight
                 total_loss = target_loss + task_loss
             else:
                 total_loss = target_loss
             if not outputs[2] == None:
-                # dis_loss = F.cross_entropy(discriminator(outputs[2].detach()), targets[1]) * self.args.diff_weight
+
                 dis_loss = F.cross_entropy(discriminator(outputs[2]), targets[1]) * self.args.diff_weight
                 self.optimizer_d.zero_grad()
                 dis_loss.backward(retain_graph=True)
@@ -77,24 +76,15 @@ class Train(object):
 
     def test_epoch(self, model, test_loader):
         model.eval()
-        # pred, true = {"target": [], "task": []}, {"target": [], "task": []}
         pred, true, results = {"target": {}, "task": {}}, {"target": {}, "task": {}}, {"target": {"all": {}}, "task": {"all": {}}}
-        # all_acc, all_f1 = {"target": [], "task": []}, {"target": [], "task": []}
         for task in self.args.task:
             pred["target"][task] = []
-            # pred["task"][task] = []
             true["target"][task] = []
-            # true["task"][task] = []
         with torch.no_grad():
             for x, label, task_id, seq_len in tqdm(test_loader):
-
-                # pred, true = {"target": [], "task": []}, {"target": [], "task": []}
-                # result, losses = model({"x": x, "task_id": task_id[0], "seq_len": seq_len}, [label, task_id])
                 result = model({"x": x, "task_id": task_id[0], "seq_len": seq_len})
                 pred["target"][self.args.id_task[task_id[0]]].extend(result[0].argmax(dim=1).tolist())
-                # pred["task"][self.args.id_task[task_id[0]]].extend(result[1].argmax(dim=1).tolist())
                 true["target"][self.args.id_task[task_id[0]]].extend(label)
-                # true["task"][self.args.id_task[task_id[0]]].extend(task_id)
         self.test_acc = self.evaluate(true, pred, self.args.task)
 
         model.train()
@@ -141,13 +131,11 @@ class Train(object):
         checkpoint = torch.load(model_path)
         model.load_state_dict(checkpoint["model"])
         pred, true, results = {"target": {}, "task": {}}, {"target": {}, "task": {}}, {"target": {"all": {}}, "task": {"all": {}}}
-        # all_acc, all_f1 = {"target": [], "task": []}, {"target": [], "task": []}
         for task in args.task:
             pred["target"][task] = []
             true["target"][task] = []
 
         model.eval()
-        # pred, true = {"target": [[]*task_num], "task": [[]*task_num]}, {"target": [[]*task_num], "task": [[]*task_num]}
         with torch.no_grad():
             for x, label, task_id, seq_len in tqdm(test_loader):
                 result = model({"x": x, "task_id": task_id[0], "seq_len": seq_len})

@@ -52,7 +52,7 @@ optimizer = Ranger(filter(lambda p: p.requires_grad, model.parameters()),
 scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.95)
 train = Train(args, args.num_epochs, optimizer, optimizer_d, scheduler)
 
-## 测试summary
+
 from model.summary import summary
 for x, label, task_id, seq_len in train_loader:
     break
@@ -63,5 +63,3 @@ train.fit(model, discriminator, train_loader, test_loader)
 end = time.time()
 
 print("\n\nAll time is ", end-start)
-
-# train.resume(model, args.resume_path, test_loader, args)

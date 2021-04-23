@@ -1,37 +1,22 @@
 import re
 from nltk import pos_tag
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords # Import the stop word list
 from nltk.stem import WordNetLemmatizer
 import pickle
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from torch.utils.data import Sampler, BatchSampler
-from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 import os
 import numpy as np
 
 def collate_fn(batch):
     data, label = zip(*batch)
-    # np.array(list(zip(*label)))
-    # return data, label
     label, task_id, seq_len = np.array(list(zip(*label)))
     return data, label, task_id, seq_len
-# class sampler(Sampler):
-#     def __init__(self, data_source):
-#         self.data_source = data_source
-#
-#     def __iter__(self):
-#         return iter()
-#
-#     def __len__(self):
-#         return len(self.data_source)
+
 
 class batch_sampler:
     def __init__(self, sampler, batch_size: int, drop_last: bool, shuff=True) -> None:
-        # super(batch_sampler, self).__init__()
-        self.sampler = sampler #index_list
+        self.sampler = sampler
         self.batch_size = batch_size
         self.drop_last = drop_last
         self.batch_sum = len(sampler) // batch_size
@@ -74,48 +59,30 @@ def load_data_and_labels(dataset, batch_size, max_len, segmentation=False):
         num = len(y)//batch_size*batch_size
         if segmentation:
             for text in x[:num]:
-                # data = data.split()
                 if len(text) > max_len:
                     x_text.append(text[:200] + text[-200:])
                     seq_len.append(max_len)
-                    # print(len(data[:256] + data[-256:]))
                 else:
                     x_text.append(text)
                     seq_len.append(len(text))
 
-            # x_text = [data.split()[:250]+data.split()[-250:] for data in dataset["text"]]
         else:
-            # x_text = [data.split() for data in dataset["text"]]
             x_text = x_text[:num]
             seq_len.extend([len(text) for text in x])
         label.extend(list(zip(*[y[:num], [id]*num, seq_len])))
 
-        # y[0].extend(datas["category"])
-        # y[1].extend([id]*len(datas["text"]))
-    # y = np.array([data for data in dataset["category"]])
     return x_text, label
 
 
 def prepare_data(args, key=True, workers=0):
     train_data, test_data = read_dataset(args)
-    x_train, y_train = load_data_and_labels(train_data, args.batch_size, args.max_len, key) #y是List, 尚未处理为numpy, y[0]是真实标签, y[1]是任务
+    x_train, y_train = load_data_and_labels(train_data, args.batch_size, args.max_len, key)
     x_test, y_test = load_data_and_labels(test_data, args.batch_size, args.max_len, key)
     print("train_data: {}, test_data: {}".format(len(y_train), len(y_test)))
-    # a = Data(x_train, y_train[0])
-    #
-    # x_train, x_test, y_train, y_test = train_test_split(x_text, y, stratify=y, test_size=0.2, random_state=6)
     train_data = Data(x_train, y_train)
     test_data = Data(x_test, y_test)
-    # train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn, drop_last=drop, pin_memory=True, num_workers=workers)
-    # test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=False, collate_fn=collate_fn, drop_last=drop, pin_memory=True, num_workers=workers)
-    # for x, y in test_loader:
-    #     print(y)
-    #     break
     bs = batch_sampler(list(range(len(x_train))), args.batch_size, args.drop_last_batch, True)
     train_loader = DataLoader(train_data, batch_sampler=bs, collate_fn=collate_fn, pin_memory=True, num_workers=workers)
-    # for x, label, task_id, seq_len in train_loader:
-    #     print(task_id)
-    #     break
     bs = batch_sampler(list(range(len(x_test))), args.batch_size, args.drop_last_batch, False)
     test_loader = DataLoader(test_data, batch_sampler=bs, collate_fn=collate_fn, pin_memory=True, num_workers=workers)
 
@@ -145,7 +112,7 @@ def read_dataset(args):
             labels, sentences = [], []
             for line in tqdm(f):
                 try:
-                    label, sentence = line.strip().split('\t')  # tokens
+                    label, sentence = line.strip().split('\t')
                     labels.append(int(label))
                     sentences.append(clean_text(sentence))
                 except:
@@ -180,7 +147,6 @@ def read_dataset(args):
                 print("success save to "+test_pickle_path)
         args.taskids[task] = id
         args.id_task[id] = task
-        # except:
-        #     assert ("there is no file")
+
 
     return train_dict, test_dict
